@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>茶叶拼配多表连接查询优化器</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo">茶</span>
+      <div>
+        <h1>茶叶拼配查询优化器</h1>
+        <p class="sub">多表连接顺序 · 行数估算 · 代价模型 · 枚举过程</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="db">SQLite: {{ db_path.split('/')[-1] }}</span>
+      <button id="btn-run" class="primary">优化 (⌘/Ctrl+Enter)</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card editor">
+      <div class="card-head">
+        <h2>1 · 查询编辑</h2>
+        <div class="examples" id="examples"></div>
+      </div>
+      <textarea id="sql" spellcheck="false"></textarea>
+      <div class="controls">
+        <label>贪心阈值 <input id="threshold" type="number" min="1" max="30" value="10" /></label>
+        <label>算法
+          <select id="algorithm">
+            <option value="auto">自动</option>
+            <option value="exhaustive">强制穷举 DP</option>
+            <option value="greedy">强制贪心</option>
+          </select>
+        </label>
+        <label class="check"><input id="use-hist" type="checkbox" checked /> 直方图估算</label>
+        <label class="check"><input id="use-multicol" type="checkbox" checked /> 多列统计修正</label>
+        <label class="check"><input id="allow-cartesian" type="checkbox" /> 允许笛卡尔积</label>
+        <label class="check"><input id="run-sqlite" type="checkbox" checked /> 在 SQLite 上执行验证</label>
+      </div>
+      <div id="message" class="message hidden"></div>
+      <div id="query-meta" class="meta"></div>
+    </section>
+
+    <section class="card graph">
+      <div class="card-head">
+        <h2>2 · 连接图</h2>
+        <div class="legend">
+          <span><i class="dot inner"></i>内连接</span>
+          <span><i class="dot outer"></i>外连接</span>
+          <span><i class="dot semi"></i>半/反连接</span>
+        </div>
+      </div>
+      <svg id="graph-svg" viewBox="0 0 900 420" preserveAspectRatio="xMidYMid meet"></svg>
+      <div id="graph-info" class="hint"></div>
+    </section>
+
+    <section class="card plan">
+      <div class="card-head">
+        <h2>3 · 计划树</h2>
+        <div class="plan-summary" id="plan-summary"></div>
+      </div>
+      <div id="plan-tree" class="tree"></div>
+    </section>
+
+    <section class="card estimate">
+      <div class="card-head">
+        <h2>4 · 行数估算对比</h2>
+        <div class="hint">估算 vs. SQLite 实际行数，逐步给出偏差</div>
+      </div>
+      <div id="estimate-table" class="table-wrap"></div>
+      <div id="timing" class="timing"></div>
+    </section>
+
+    <section class="card enum">
+      <div class="card-head">
+        <h2>5 · 枚举过程</h2>
+        <div class="hint">子问题数 / 转移数，以及链、星、环、团四种图形状的对比</div>
+      </div>
+      <div id="enum-summary" class="meta"></div>
+      <div class="two-col">
+        <div>
+          <h3>本次查询的枚举</h3>
+          <div id="enum-query" class="table-wrap"></div>
+        </div>
+        <div>
+          <h3>子问题数：四种查询图形状</h3>
+          <table id="enum-shapes" class="grid"></table>
+        </div>
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>候选计划（代价从低到高）</h3>
+          <div id="alternatives" class="table-wrap"></div>
+        </div>
+        <div>
+          <h3>与穷举所有顺序对比</h3>
+          <div id="brute" class="meta"></div>
+          <button id="btn-brute" class="secondary">运行穷举验证</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card predicates">
+      <div class="card-head">
+        <h2>选择率来源</h2>
+        <div class="hint">每条谓词的选择率、来源（直方图 / 多列统计 / 默认值）与说明</div>
+      </div>
+      <div id="predicates" class="table-wrap"></div>
+    </section>
+
+    <section class="card notes">
+      <div class="card-head"><h2>规则与提示</h2></div>
+      <ul id="notes"></ul>
+    </section>
+  </main>
+
+  <script>window.EXAMPLES = {{ examples|tojson }};</script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
